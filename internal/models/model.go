@@ -1,14 +1,22 @@
 package models
 
 import (
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+
+	"github.com/Destinyxus/storeAPI/internal/hashPass"
 )
 
 type CreateCustomerRequest struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
+	Password  string `json:"password,omitempty"`
 	Phone     string `json:"phone"`
 	Email     string `json:"email"`
+}
+
+func (m *Customer) CompareHash(password string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(m.HashedPassword), []byte(password)) == nil
 }
 
 type CreateProductRequest struct {
@@ -16,23 +24,32 @@ type CreateProductRequest struct {
 	Name string `json:"name"`
 }
 
-func NewCustomer(firstName, lastName, phone, email string) *Customer {
-	return &Customer{
-		FirstName: firstName,
-		LastName:  lastName,
-		Phone:     phone,
-		Email:     email,
+func NewCustomer(firstName, lastName, password, phone, email string) *Customer {
+	cipherPassword, err := hashPass.CipherPassword(password)
+	if err != nil {
+		return nil
 	}
+	return &Customer{
+		FirstName:      firstName,
+		LastName:       lastName,
+		HashedPassword: cipherPassword,
+		Phone:          phone,
+		Email:          email,
+	}
+}
+
+func (m *CreateCustomerRequest) Sanitize() {
+	m.Password = ""
 }
 
 type Customer struct {
 	gorm.Model
-	FirstName string
-	LastName  string
-	Phone     string
-	Email     string `gorm:"unique;not null"`
-	Cart      Cart
-	Sessions  []Session
+	FirstName      string
+	LastName       string
+	HashedPassword string `gorm:"not null"`
+	Phone          string
+	Email          string `gorm:"unique;not null"`
+	Cart           Cart
 }
 
 type Cart struct {
@@ -54,10 +71,4 @@ type ProductPhoto struct {
 	gorm.Model
 	Photo     string
 	ProductID uint
-}
-
-type Session struct {
-	gorm.Model
-	CustomerID uint
-	SessionID  string
 }

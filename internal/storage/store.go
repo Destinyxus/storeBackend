@@ -36,7 +36,7 @@ func (s *Storage) Open() error {
 
 	s.db = db
 
-	err = s.db.AutoMigrate(&models.Customer{}, &models.Product{}, &models.ProductPhoto{}, &models.Cart{}, &models.Session{})
+	err = s.db.AutoMigrate(&models.Customer{}, &models.Product{}, &models.ProductPhoto{}, &models.Cart{})
 
 	return nil
 
@@ -58,15 +58,15 @@ func (s *Storage) CreateCart(customerID uint) error {
 	return nil
 }
 
-func (s *Storage) FindCustomerBySession(sessionID string) (uint, error) {
-	var session models.Session
-	if err := s.db.Where("session_id = ?", sessionID).First(&session).Error; err != nil {
-		return 0, err
-	}
-
-	return session.CustomerID, nil
-
-}
+//	func (s *Storage) FindCustomerBySession(sessionID string) (uint, error) {
+//		var session models.Session
+//		if err := s.db.Where("session_id = ?", sessionID).First(&session).Error; err != nil {
+//			return 0, err
+//		}
+//
+//		return session.CustomerID, nil
+//
+// }
 func (s *Storage) FindCartByCustomer(customerID uint) (*Result, error) {
 	result := &Result{}
 
@@ -98,19 +98,22 @@ func (s *Storage) RetrieveProducts() (*models.Product, error) {
 	return productsList, result.Error
 }
 
-func (s *Storage) CreateCustomer(customer *models.Customer) (uint, error) {
+func (s *Storage) CreateCustomer(customer *models.Customer) error {
 	result := s.db.Create(&customer)
-	if result.Error != nil {
-		return 0, result.Error
-	}
-	return customer.ID, nil
-
-}
-
-func (s *Storage) CreateSession(session *models.Session) error {
-	result := s.db.Create(&session)
 	if result.Error != nil {
 		return result.Error
 	}
 	return nil
+
+}
+
+func (s *Storage) FindCustomerByEmail(email string) (*models.Customer, error) {
+
+	user := new(models.Customer)
+	if err := s.db.Where("email = ?", email).First(user).Error; err != nil {
+		return nil, err
+	}
+
+	return user, nil
+
 }
