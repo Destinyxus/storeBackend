@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"os"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -28,7 +29,7 @@ type ProductCart struct {
 }
 
 func (s *Storage) Open() error {
-	dsn := "host=localhost user=postgres password=10120001 dbname=Store port=5432 sslmode=disable"
+	dsn := os.Getenv("DB")
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return err
@@ -58,15 +59,6 @@ func (s *Storage) CreateCart(customerID uint) error {
 	return nil
 }
 
-//	func (s *Storage) FindCustomerBySession(sessionID string) (uint, error) {
-//		var session models.Session
-//		if err := s.db.Where("session_id = ?", sessionID).First(&session).Error; err != nil {
-//			return 0, err
-//		}
-//
-//		return session.CustomerID, nil
-//
-// }
 func (s *Storage) FindCartByCustomer(customerID uint) (*Result, error) {
 	result := &Result{}
 

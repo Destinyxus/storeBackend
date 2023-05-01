@@ -42,7 +42,6 @@ func (s *APIServer) configureRouter() error {
 	s.router.Post("/addProduct/{id}", s.authMiddleware(s.AddProductToCart()))
 	s.router.Post("/createCustomer", s.CreateCustomer())
 	s.router.Post("/createSession", s.AuthHandler())
-	s.router.Post("/createCart", s.authMiddleware(s.CreateCart()))
 
 	return nil
 }
@@ -62,52 +61,39 @@ func (s *APIServer) GetProducts() http.HandlerFunc {
 	}
 }
 
-func (s *APIServer) CreateCart() http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
-
-		claims := request.Context().Value("claims").(*authJWT.MyCustomClaims)
-
-		customerID, err := s.store.FindCustomerByEmail(claims.Email)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if err := s.store.CreateCart(customerID.ID); err != nil {
-			http.Error(writer, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// Return a success response to the client
-		writer.WriteHeader(http.StatusCreated)
-		writer.Write([]byte("Cart created successfully"))
-	}
-}
-
 func (s *APIServer) AddProductToCart() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
+
 		claims := request.Context().Value("claims").(*authJWT.MyCustomClaims)
 
 		customerID, err := s.store.FindCustomerByEmail(claims.Email)
-
-		// Find the cart associated with the customer
-		cart, err := s.store.FindCartByCustomer(customerID.ID)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusInternalServerError)
-			return
-		}
 
 		id := chi.URLParam(request, "id")
 		idd, err := strconv.Atoi(id)
-		err = s.store.AddProductToCart(cart.CartID, uint(idd))
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		if err := s.store.CreateCart(customerID.ID); err != nil {
+			cart, err := s.store.FindCartByCustomer(customerID.ID)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			err = s.store.AddProductToCart(cart.CartID, uint(idd))
+			writer.WriteHeader(http.StatusOK)
+			writer.Write([]byte("Product added to cart successfully"))
+		} else {
+			cart, err := s.store.FindCartByCustomer(customerID.ID)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			err = s.store.AddProductToCart(cart.CartID, uint(idd))
+			writer.WriteHeader(http.StatusOK)
+			writer.Write([]byte("Product added to cart successfully"))
 
-		// Return a success response to the client
-		writer.WriteHeader(http.StatusOK)
-		writer.Write([]byte("Product added to cart successfully"))
+		}
 
 	}
 }
@@ -134,7 +120,6 @@ func (s *APIServer) CreateCustomer() http.HandlerFunc {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
 	}
 }
 
